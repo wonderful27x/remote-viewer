@@ -80,4 +80,24 @@
 		* 合并候选车牌列表
 		* 提取候选车牌HOG特征送入SVM模型，选出可信度最高的
 		* 抠出字符提取HOG特征，送入ANN模型，识别出字符
-	
+
+## projection投屏
+* **知识点**
+	1. mediaprojection采集
+		* MediaProjection.createVirtualDisplay(Surface(SurfaceTexture(texture)))
+		* SurfaceTexture获取到数据，updateTexImage更新纹理
+	2. opengl渲染
+		* 创建HandlerThread和Handler
+		* 创建egl环境,其中surface有编码器mediaCodec提供
+		* shader修改纹理坐标，进行图像裁剪
+		* 按照帧率通过handler消息循环渲染,输入是采集端纹理id
+	3. MediaCodec编码
+		* 创建编码器createEncoderByType
+		* 设置参数: 编码格式、码率、帧率、关键帧间隔、图像宽高、profileLevel
+		* 设置参数: 编码格式、采样率、通道数、码率、每帧大小、buffer帧数
+		* 对于音频手动输入数据编码: dequeueInputBuffer、getInputBuffer、填充数据、queueInputBuffer
+		* 开启线程读取编码数据: dequeueOutputBuffer、getOutputBuffer,回调
+	4. 打包TS
+		* 音频添加ADTS
+		* 视频I帧添加SPS、PPS
+		* 打包TS发送
