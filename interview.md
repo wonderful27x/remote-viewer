@@ -1,3 +1,54 @@
+## 交科院-执法项目
+* **职责**:
+	* 正常开发
+	* 封装通用控件，减少重复代码
+	* 研究技术，做技术积累
+* **参与的工作**
+	* 基本信息录入，查询信息展示
+	* 代码很乱，赋值粘贴，自告奋勇，通过自定义view自己实现，封装成class，替换旧代码
+	* 自定义相机，满足设计要求，系统api无法实现
+* **遇到的问题**
+	* 读卡api: 不同省份提供，每次打包需要修改代码。使用apt动态生成class代理类，对外提供统一接口，屏蔽继承与内部实现,实现一键打包，得到表扬
+	* 上线后统计http信息: 传统思路插入函数，新思路使用apo-aspectJ,用注解，避免代码入侵,去掉注解对编译无任何影响
+
+## 视博云-projection投屏
+* **知识点**
+	1. mediaprojection采集
+		* MediaProjection.createVirtualDisplay(Surface(SurfaceTexture(texture)))
+		* SurfaceTexture获取到数据，updateTexImage更新纹理
+	2. opengl渲染
+		* 创建HandlerThread和Handler
+		* 创建egl环境,其中surface有编码器mediaCodec提供
+		* shader修改纹理坐标，进行图像裁剪
+		* 按照帧率通过handler消息循环渲染,输入是采集端纹理id
+	3. MediaCodec编码
+		* 创建编码器createEncoderByType
+		* 设置参数: 编码格式、码率、帧率、关键帧间隔、图像宽高、profileLevel
+		* 设置参数: 编码格式、采样率、通道数、码率、每帧大小、buffer帧数
+		* 对于音频手动输入数据编码: dequeueInputBuffer、getInputBuffer、填充数据、queueInputBuffer
+		* 开启线程读取编码数据: dequeueOutputBuffer、getOutputBuffer,回调
+	4. 打包TS
+		* 音频添加ADTS
+		* 视频I帧添加SPS、PPS
+		* 打包TS发送
+	5. 如何解决延迟问题
+		* 采集环节: 不要缓存很多帧，音频bufferSize不要太大;AAC每帧4096字节，25帧，大概23ms
+		* 渲染环节: 比较复杂耗时的操作如矩阵变换，颜色转换等，放到GPU处理，也就是shader
+		* 编码环节: 去除B帧；质量与编码速度矛盾，不是码率越高越好有公式,profileLeve base；preset作用于一组参数，fast，veryfast;tune zerolatency
+		* 发送环节: 使用阻塞队列而不是sleep，尽快通知；网络不好发送速率小于编码有堆积，检测发送速率和队列长度，反馈给编码器，降低帧率、码率，同时做对帧处理，注意gop IDR帧
+		* 接收渲染端: 队列不要太大，在发送端网络不好突然变好可能导致接收端队列突然变大
+
+* **遇到的问题**
+	* 录流: 开线程专门写文件，发送前先放到录流队列，使用释放的内存，二次delete程序崩溃，gdb调试，使用智能指针
+	* opengl渲染没画面: 无法定位问题
+		* 直接clearColor刷颜色
+		* shader刷颜色
+		* 录原始解码流
+		* 直接渲染解码流
+		* 一点点放开注释
+		* 定位到问题glDrawElement es2.0 unsigned_int 改为 unsigned short
+	* 从零开始
+
 ## opengl美颜特效
 * **功能**
 	1. 大眼滤镜
@@ -81,23 +132,3 @@
 		* 提取候选车牌HOG特征送入SVM模型，选出可信度最高的
 		* 抠出字符提取HOG特征，送入ANN模型，识别出字符
 
-## projection投屏
-* **知识点**
-	1. mediaprojection采集
-		* MediaProjection.createVirtualDisplay(Surface(SurfaceTexture(texture)))
-		* SurfaceTexture获取到数据，updateTexImage更新纹理
-	2. opengl渲染
-		* 创建HandlerThread和Handler
-		* 创建egl环境,其中surface有编码器mediaCodec提供
-		* shader修改纹理坐标，进行图像裁剪
-		* 按照帧率通过handler消息循环渲染,输入是采集端纹理id
-	3. MediaCodec编码
-		* 创建编码器createEncoderByType
-		* 设置参数: 编码格式、码率、帧率、关键帧间隔、图像宽高、profileLevel
-		* 设置参数: 编码格式、采样率、通道数、码率、每帧大小、buffer帧数
-		* 对于音频手动输入数据编码: dequeueInputBuffer、getInputBuffer、填充数据、queueInputBuffer
-		* 开启线程读取编码数据: dequeueOutputBuffer、getOutputBuffer,回调
-	4. 打包TS
-		* 音频添加ADTS
-		* 视频I帧添加SPS、PPS
-		* 打包TS发送
